@@ -41,7 +41,8 @@ switch (io) {
         break;
       }
       case "RotationSpeed": {
-        console.log(50);
+        const speed = await storage.getItem(characteristic);
+        console.log(speed ? speed * 10 : 0);
         break;
       }
       default:
@@ -55,13 +56,29 @@ switch (io) {
       case "Active": {
         const active = await storage.getItem(characteristic);
         if (active != option) {
-          execFileSync('/home/dietpi/adrsirlib/ircontrol', ['send', 'fan_power']);
           await storage.setItem(characteristic, option);
+          execFileSync('/home/dietpi/adrsirlib/ircontrol', ['send', 'fan_power']);
         }
         break;
       }
       case "RotationSpeed": {
-        execFileSync('/home/dietpi/adrsirlib/ircontrol', ['send', option > 50 ? 'fan_up' : 'fan_down']);
+        const active = await storage.getItem("Active");
+        if (active == "0") {
+          await storage.setItem("Active", "1");
+          execFileSync('/home/dietpi/adrsirlib/ircontrol', ['send', 'fan_power']);
+        }
+        let speed = Math.floor(option / 10);
+        if (speed > 8) {
+          speed = 8;
+        } else if (speed < 1) {
+          speed = 1;
+        }
+        const prev_speed = await storage.getItem(characteristic);
+        const step = Math.abs(speed - prev_speed);
+        await storage.setItem(characteristic, speed);
+        for (let i = 0; i < step; i++) {
+          execFileSync('/home/dietpi/adrsirlib/ircontrol', ['send', speed > prev_speed ? 'fan_up' : 'fan_down']);
+        }
         break;
       }
       default:
